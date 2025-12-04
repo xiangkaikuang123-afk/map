@@ -1,281 +1,177 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Restaurant Roulette</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<meta charset="UTF-8">
+<title>Restaurant Roulette Dark Mode</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root {
+  --primary: #00b14f;
+  --primary-dark: #009b45;
+  --bg: #121212;
+  --bg-panel: #1e1e1e;
+  --text: #ffffff;
+  --text-secondary: #bbbbbb;
+}
+*{box-sizing:border-box;}
+body, html {margin:0; padding:0; font-family: 'Inter', Arial, sans-serif; background:var(--bg); color:var(--text); height:100%;}
 
-  <style>
-    body, html {
-      margin: 0; padding: 0;
-      height: 100%;
-      background: #f5f5f5;
-      font-family: "Segoe UI", Arial, sans-serif;
-    }
+#topBar {width:100%; padding:15px; background:var(--primary); color:white; font-size:22px; font-weight:600; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.3);}
 
-    #topBar {
-      position: absolute;
-      top: 10px; left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      max-width: 500px;
-      z-index: 9999;
-    }
+#searchSection {position: relative; max-width: 600px; margin: 15px auto;}
+#searchBox {width:100%; padding:12px 16px; font-size:18px; border:none; border-radius:25px; outline:none; background: var(--bg-panel); color:white; box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+#suggestions {position: absolute; top:50px; width:100%; background: var(--bg-panel); border-radius:0 0 20px 20px; overflow:hidden; max-height:250px; overflow-y:auto; display:none; opacity:0; transition:opacity 0.3s ease; box-shadow:0 6px 18px rgba(0,0,0,0.5); z-index:1000;}
+.suggestItem {padding:12px 16px; cursor:pointer; border-bottom:1px solid #333; color: var(--text); transition: background 0.2s;}
+.suggestItem:last-child {border-bottom:none;}
+.suggestItem:hover {background: rgba(0,177,79,0.2);}
 
-    #searchBox {
-      width: 100%;
-      padding: 12px 15px;
-      font-size: 18px;
-      border-radius: 12px;
-      border: 1px solid #ccc;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-      outline: none;
-    }
+#map { height:60vh; width:100%; }
+#controls { text-align:center; padding:15px; }
+#pickRestaurant { background: var(--primary); color:white; border:none; padding:14px 25px; border-radius:25px; font-size:20px; cursor:pointer; transition:0.3s;}
+#pickRestaurant:hover { background: var(--primary-dark); }
 
-    #suggestions {
-      width: 100%;
-      background: white;
-      margin-top: 5px;
-      border-radius: 12px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-      overflow: hidden;
-      display: none;
-      max-height: 220px;
-      overflow-y: auto;
-    }
+.leaflet-popup-content { font-size:16px; color:var(--text); }
+.leaflet-popup-content a { color:#00b14f; text-decoration:none; }
+.leaflet-popup-content a:hover { text-decoration:underline; }
 
-    .suggest-item {
-      padding: 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      font-size: 16px;
-    }
-    .suggest-item:hover {
-      background: #f0f0f0;
-    }
-
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-    }
-
-    #pickRestaurant {
-      padding: 14px 26px;
-      font-size: 20px;
-      border: none;
-      border-radius: 14px;
-      background: #ff5722;
-      color: white;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-      transition: 0.2s;
-    }
-    #pickRestaurant:hover {
-      background: #e44a18;
-    }
-
-    .restaurant-title {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-
-    .restaurant-link {
-      display: inline-block;
-      margin-top: 6px;
-      font-weight: bold;
-      color: #007BFF;
-    }
-
-    .review {
-      margin-top: 10px;
-      padding-top: 8px;
-      border-top: 1px solid #ddd;
-    }
-
-    .leaflet-popup-content {
-      font-size: 17px;
-    }
-  </style>
+.review { margin-top:5px; padding:5px; border-top:1px solid #333; font-size:14px; color: var(--text-secondary);}
+.rating { color:#ffb400; font-weight:bold;}
+</style>
 </head>
 <body>
 
-<div id="topBar">
-  <input id="searchBox" type="text" placeholder="Search place name…" />
+<div id="topBar">Restaurant Roulette</div>
+
+<div id="searchSection">
+  <input id="searchBox" type="text" placeholder="Search location (Malaysia)..." autocomplete="off">
   <div id="suggestions"></div>
 </div>
 
 <div id="map"></div>
 
 <div id="controls">
-  <button id="pickRestaurant">🎲 Pick Restaurant</button>
+  <button id="pickRestaurant">Pick Random Restaurant</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([3.1390, 101.6869], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+let map = L.map('map').setView([3.1390,101.6869],14);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);
 
-  let restaurants = [];
-  let selectedLocation = null;
-  let userMarker = null;
+let selectedLocation = null;
+let userMarker = null;
+let restaurants = [];
+let currentMarker = null;
 
-  const countryCode = "MY"; // restrict suggestions by country
-
-  // --------------------------
-  // AUTO DETECT USER LOCATION
-  // --------------------------
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
-        selectedLocation = { lat, lng };
-        map.setView([lat, lng], 16);
-
-        userMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
-        userMarker.on("dragend", e => {
-          selectedLocation = e.target.getLatLng();
-          restaurants = [];
-        });
-      },
-      () => console.log("Location blocked by user")
-    );
-  }
-
-  // -------------------------
-  // SEARCH BAR SUGGESTIONS
-  // -------------------------
-  const searchBox = document.getElementById("searchBox");
-  const suggestions = document.getElementById("suggestions");
-
-  searchBox.addEventListener("input", async () => {
-    const text = searchBox.value.trim();
-    if (text.length < 2) {
-      suggestions.style.display = "none";
-      return;
-    }
-
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=8&countrycode=${countryCode}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-
-    suggestions.innerHTML = "";
-    data.features.forEach(f => {
-      const div = document.createElement("div");
-      div.className = "suggest-item";
-      div.textContent = f.properties.name + " — " + (f.properties.city || f.properties.country || "");
-      div.onclick = () => selectPlace(f);
-      suggestions.appendChild(div);
+// --- Auto-detect user location ---
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    selectedLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+    map.setView([selectedLocation.lat, selectedLocation.lng],16);
+    userMarker = L.marker(selectedLocation,{draggable:true}).addTo(map);
+    userMarker.on("dragend",e=>{
+      selectedLocation = e.target.getLatLng();
+      restaurants=[]; if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
     });
+  }, ()=>console.warn("Geolocation denied"));
+}
 
-    suggestions.style.display = "block";
-  });
+// --- Click map sets location ---
+map.on("click",e=>{
+  selectedLocation = e.latlng;
+  restaurants=[]; 
+  if(!userMarker){
+    userMarker=L.marker(e.latlng,{draggable:true}).addTo(map);
+    userMarker.on("dragend",evt=>{
+      selectedLocation=evt.target.getLatLng();
+      restaurants=[]; if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
+    });
+  } else userMarker.setLatLng(e.latlng);
+  if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
+});
 
-  function selectPlace(f) {
-    const lat = f.geometry.coordinates[1];
-    const lon = f.geometry.coordinates[0];
-    const name = f.properties.name;
+// --- Search suggestion ---
+const searchBox = document.getElementById("searchBox");
+const suggestionsBox = document.getElementById("suggestions");
+let suggestionTimeout;
+searchBox.addEventListener("input",()=>{
+  const q=searchBox.value.trim();
+  clearTimeout(suggestionTimeout);
+  if(q.length<2){ suggestionsBox.style.opacity=0; setTimeout(()=>{suggestionsBox.style.display="none"},300); return; }
+  
+  suggestionTimeout=setTimeout(async()=>{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=MY&q=${encodeURIComponent(q)}`);
+    const data=await res.json();
+    suggestionsBox.innerHTML="";
+    data.forEach(r=>{
+      const item=document.createElement("div");
+      item.className="suggestItem";
+      item.textContent=r.display_name;
+      item.onclick=()=>{
+        selectedLocation={lat:r.lat,lng:r.lon};
+        map.setView([r.lat,r.lon],16);
+        if(!userMarker) userMarker=L.marker([r.lat,r.lon],{draggable:true}).addTo(map);
+        else userMarker.setLatLng([r.lat,r.lon]);
+        restaurants=[]; if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
+        suggestionsBox.style.opacity=0; setTimeout(()=>{suggestionsBox.style.display="none"},300);
+      };
+      suggestionsBox.appendChild(item);
+    });
+    suggestionsBox.style.display="block";
+    setTimeout(()=>{suggestionsBox.style.opacity=1},10);
+  },300);
+});
 
-    searchBox.value = name;
-    suggestions.style.display = "none";
+// --- Fetch nearby restaurants ---
+async function fetchNearby(lat,lon){
+  const query=`[out:json][timeout:25];node["amenity"="restaurant"](around:1200,${lat},${lon});out;`;
+  const url="https://overpass-api.de/api/interpreter?data="+encodeURIComponent(query);
+  const resp=await fetch(url); const data=await resp.json();
+  return data.elements.map(el=>({name:el.tags.name||"Unnamed Restaurant",lat:el.lat,lon:el.lon}));
+}
 
-    selectedLocation = { lat, lng: lon };
-    restaurants = [];
+// --- Dummy Reviews ---
+async function getReviews(name){
+  // simulate reviews, can connect to free API if desired
+  return [
+    {provider:'Yelp', reviewRating:4, reviewText:'Nice place!'},
+    {provider:'Google', reviewRating:5, reviewText:'Excellent food.'}
+  ];
+}
 
-    if (!userMarker) {
-      userMarker = L.marker(selectedLocation, { draggable: true }).addTo(map);
-      userMarker.on("dragend", e => {
-        selectedLocation = e.target.getLatLng();
-        restaurants = [];
-      });
-    } else {
-      userMarker.setLatLng(selectedLocation);
-    }
-
-    map.setView([lat, lon], 16);
+// --- Pick Random Restaurant ---
+async function pickRestaurant(){
+  if(!selectedLocation) return alert("Location not set yet.");
+  if(restaurants.length===0){
+    restaurants=await fetchNearby(selectedLocation.lat,selectedLocation.lng);
+    if(restaurants.length===0) return alert("No restaurants nearby.");
   }
 
-  // -------------------------
-  // FETCH RESTAURANTS (OSM)
-  // -------------------------
-  async function fetchNearby(lat, lon) {
-    const query = `[out:json][timeout:20];
-      node["amenity"="restaurant"](around:1200,${lat},${lon});
-      out;`;
+  const picked=restaurants[Math.floor(Math.random()*restaurants.length)];
 
-    const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
-    const resp = await fetch(url);
-    const data = await resp.json();
+  if(currentMarker) map.removeLayer(currentMarker);
+  currentMarker = L.marker([picked.lat,picked.lon]).addTo(map);
 
-    return data.elements.map(el => ({
-      name: el.tags.name || "Unnamed Restaurant",
-      lat: el.lat,
-      lon: el.lon
-    }));
+// Build popup content
+let popupHtml = `<b style="color:black;">${picked.name}</b><br>
+                 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.name)}" target="_blank">Open in Google Maps</a>`;
+
+
+
+  const reviews = await getReviews(picked.name);
+  if(reviews.length>0){
+    reviews.slice(0,3).forEach(r=>{
+      popupHtml += `<div class="review"><b>${r.provider}</b> — ⭐ ${r.reviewRating}<br>"${r.reviewText}"</div>`;
+    });
+  } else {
+    popupHtml += `<div class="review">No public reviews found.</div>`;
   }
 
-  // -------------------------
-  // PICK RANDOM RESTAURANT
-  // -------------------------
-  document.getElementById("pickRestaurant").addEventListener("click", async () => {
-    if (!selectedLocation) {
-      alert("Select a location first.");
-      return;
-    }
+  currentMarker.bindPopup(popupHtml).openPopup();
+  map.setView([picked.lat,picked.lon],16);
+}
 
-    if (restaurants.length === 0) {
-      restaurants = await fetchNearby(selectedLocation.lat, selectedLocation.lng);
-      if (restaurants.length === 0) {
-        alert("No restaurants nearby.");
-        return;
-      }
-    }
-
-    const picked = restaurants[Math.floor(Math.random() * restaurants.length)];
-
-    const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      picked.name
-    )}`;
-
-    L.popup()
-      .setLatLng([picked.lat, picked.lon])
-      .setContent(`
-        <div class="restaurant-title">${picked.name}</div>
-        <a class="restaurant-link" target="_blank" href="${link}">
-          Open in Google Maps
-        </a>
-      `)
-      .openOn(map);
-  });
-
-  // -------------------------
-  // CLICK ON MAP TO MOVE PIN
-  // -------------------------
-  map.on("click", e => {
-    selectedLocation = e.latlng;
-    restaurants = [];
-
-    if (!userMarker) {
-      userMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
-      userMarker.on("dragend", evt => {
-        selectedLocation = evt.target.getLatLng();
-        restaurants = [];
-      });
-    } else {
-      userMarker.setLatLng(e.latlng);
-    }
-  });
+document.getElementById("pickRestaurant").onclick=pickRestaurant;
 </script>
-
 </body>
 </html>

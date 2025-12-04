@@ -2,22 +2,53 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Leaflet Restaurant Roulette</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <title>Restaurant Roulette with Search Suggestions</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
-    #map { height: 90vh; width: 100%; }
-    #controls { height: 10vh; display: flex; justify-content: center; align-items: center; gap: 10px; }
-    button { padding: 10px 20px; font-size: 18px; cursor: pointer; }
-    .leaflet-popup-content { font-size: 18px; }
-    .restaurant-link { font-weight: bold; color: #007BFF; text-decoration: none; }
-    .restaurant-link:hover { text-decoration: underline; }
+    body, html { margin:0; padding:0; height:100%; font-family:Arial,sans-serif; }
+    
+    #search-bar {
+      padding:10px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      gap:10px;
+      background:#f0f0f0;
+      position:relative;
+    }
+    #searchInput { width:300px; padding:8px; font-size:16px; }
+    #suggestions {
+      position:absolute;
+      top:45px; /* below the input */
+      left:0;
+      width:300px;
+      background:#fff;
+      border:1px solid #ccc;
+      max-height:150px;
+      overflow-y:auto;
+      z-index:1000;
+      display:none;
+    }
+    .suggestion-item { padding:5px; cursor:pointer; }
+    .suggestion-item:hover { background:#eee; }
+    
+    #map { height:85vh; width:100%; }
+    #controls { height:5vh; display:flex; justify-content:center; align-items:center; gap:10px; }
+    button { padding:8px 16px; font-size:16px; cursor:pointer; }
+    .leaflet-popup-content { font-size:16px; }
+    .restaurant-link { font-weight:bold; color:#007BFF; text-decoration:none; }
+    .restaurant-link:hover { text-decoration:underline; }
+    .review { margin-top:5px; padding:5px; border-top:1px solid #ccc; }
+    .rating { color:#ff9900; font-weight:bold; }
   </style>
 </head>
 <body>
+
+<div id="search-bar">
+  <input id="searchInput" type="text" placeholder="Type a place or address">
+  <button id="searchBtn">Search</button>
+  <div id="suggestions"></div>
+</div>
 
 <div id="map"></div>
 <div id="controls">
@@ -26,78 +57,151 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([3.1390, 101.6869], 14); // Kuala Lumpur
+  const map = L.map('map').setView([3.1390, 101.6869], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(map);
-
-  let userMarker = null;
+  let restaurants = [];
   let selectedLocation = null;
+  let userMarker = null;
+  const suggestionsDiv = document.getElementById('suggestions');
+  const countryCode = 'MY'; // Malaysia
 
-  // Click to select location
-  map.on('click', function(e) {
-    selectedLocation = e.latlng;
-    if (userMarker) {
-      userMarker.setLatLng(selectedLocation);
-    } else {
-      userMarker = L.marker(selectedLocation, { draggable: true }).addTo(map);
-      userMarker.bindPopup("<span style='font-size:20px; font-weight:bold;'>Selected Location</span>").openPopup();
-      userMarker.on('dragend', function(event) {
-        selectedLocation = event.target.getLatLng();
-      });
-    }
-  });
-
-  async function fetchRestaurants(lat, lon) {
+  async function fetchNearbyOSM(lat, lon) {
     const query = `[out:json][timeout:25];
       node["amenity"="restaurant"](around:1000,${lat},${lon});
       out;`;
     const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+    const resp = await fetch(url);
+    const data = await resp.json();
+    return data.elements.map(el => ({
+      name: el.tags.name || 'Unnamed Restaurant',
+      lat: el.lat,
+      lon: el.lon
+    }));
+  }
 
+  async function getReviews(restaurantName) {
     try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.elements && data.elements.length > 0) {
-        return data.elements.map(el => ({
-          name: el.tags.name || "Unnamed Restaurant",
-          lat: el.lat,
-          lon: el.lon
-        }));
-      } else {
-        return [];
-      }
-    } catch (err) {
-      console.error(err);
+      const resp = await fetch('/getReviews', {
+        method: 'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ query: restaurantName, location: selectedLocation })
+      });
+      const data = await resp.json();
+      return data.reviews || [];
+    } catch(e) {
+      console.error('Error fetching reviews', e);
       return [];
     }
   }
 
-  document.getElementById('pickRestaurant').addEventListener('click', async function() {
+  async function pickRandomRestaurant() {
     if (!selectedLocation) {
-      alert("Please select a location first!");
+      alert('Select location first (click map, allow geolocation, or search)');
       return;
     }
-
-    const restaurants = await fetchRestaurants(selectedLocation.lat, selectedLocation.lng);
-
     if (restaurants.length === 0) {
-      alert("No restaurants found nearby.");
-      return;
+      restaurants = await fetchNearbyOSM(selectedLocation.lat, selectedLocation.lng);
+      if (restaurants.length === 0) {
+        alert('No restaurants found nearby');
+        return;
+      }
+    }
+    const picked = restaurants[Math.floor(Math.random() * restaurants.length)];
+    const reviews = await getReviews(picked.name);
+    let reviewHtml = '';
+    if (reviews.length > 0) {
+      reviews.slice(0,3).forEach(r => {
+        reviewHtml += `<div class="review"><strong>${r.provider}</strong> — ⭐ ${r.reviewRating || ''} — "${r.reviewText}"</div>`;
+      });
+    } else {
+      reviewHtml = '<div class="review">No public reviews found.</div>';
     }
 
-    const picked = restaurants[Math.floor(Math.random() * restaurants.length)];
-
-    // Google Maps link with restaurant name
-    const googleMapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.name + " near Kuala Lumpur")}`;
-
+    const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.name)}`;
     L.popup()
       .setLatLng([picked.lat, picked.lon])
-      .setContent(`<span style="font-size:20px; font-weight:bold;">Picked Restaurant:</span><br>
-                   <a class="restaurant-link" href="${googleMapLink}" target="_blank">${picked.name}</a>`)
+      .setContent(`<b>${picked.name}</b><br><a class="restaurant-link" href="${link}" target="_blank">Open in Google Maps</a>${reviewHtml}`)
       .openOn(map);
-  });
-</script>
+  }
 
+  async function searchPlace(query) {
+    if (!query) {
+      suggestionsDiv.style.display = 'none';
+      return;
+    }
+    const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=${countryCode}&q=${encodeURIComponent(query)}`;
+    const resp = await fetch(url);
+    const results = await resp.json();
+
+    suggestionsDiv.innerHTML = '';
+    if(results.length > 0) {
+      suggestionsDiv.style.display = 'block';
+      results.slice(0,5).forEach(place => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        div.textContent = place.display_name;
+        div.addEventListener('click', () => {
+          selectPlace(place);
+          suggestionsDiv.innerHTML = '';
+          suggestionsDiv.style.display = 'none';
+        });
+        suggestionsDiv.appendChild(div);
+      });
+    } else {
+      suggestionsDiv.style.display = 'none';
+    }
+  }
+
+  function selectPlace(place) {
+    selectedLocation = { lat: parseFloat(place.lat), lng: parseFloat(place.lon) };
+    map.setView([selectedLocation.lat, selectedLocation.lng], 16);
+    if (!userMarker) {
+      userMarker = L.marker(selectedLocation, { draggable:true }).addTo(map);
+      userMarker.on('dragend', evt => {
+        selectedLocation = evt.target.getLatLng();
+        restaurants = [];
+      });
+    } else {
+      userMarker.setLatLng([selectedLocation.lat, selectedLocation.lng]);
+    }
+    restaurants = [];
+  }
+
+  map.on('click', e => {
+    selectedLocation = e.latlng;
+    restaurants = [];
+    if (!userMarker) {
+      userMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+      userMarker.on('dragend', evt => {
+        selectedLocation = evt.target.getLatLng();
+        restaurants = [];
+      });
+    } else {
+      userMarker.setLatLng(e.latlng);
+    }
+  });
+
+  document.getElementById('pickRestaurant').addEventListener('click', pickRandomRestaurant);
+  document.getElementById('searchBtn').addEventListener('click', () => {
+    const query = document.getElementById('searchInput').value.trim();
+    searchPlace(query);
+  });
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    searchPlace(e.target.value.trim());
+  });
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      selectedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      map.setView([selectedLocation.lat, selectedLocation.lng], 16);
+      userMarker = L.marker(selectedLocation, { draggable:true }).addTo(map);
+      userMarker.on('dragend', evt => {
+        selectedLocation = evt.target.getLatLng();
+        restaurants = [];
+      });
+    }, err => console.warn('Geolocation denied'));
+  }
+</script>
 </body>
 </html>

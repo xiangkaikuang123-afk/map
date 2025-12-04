@@ -26,7 +26,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([3.1390, 101.6869], 13); // Kuala Lumpur
+  const map = L.map('map').setView([3.1390, 101.6869], 14); // Kuala Lumpur
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
@@ -43,37 +43,58 @@
     } else {
       userMarker = L.marker(selectedLocation, { draggable: true }).addTo(map);
       userMarker.bindPopup("<span style='font-size:20px; font-weight:bold;'>Selected Location</span>").openPopup();
-
       userMarker.on('dragend', function(event) {
         selectedLocation = event.target.getLatLng();
       });
     }
   });
 
-  // Simulate restaurant roulette pick
-  document.getElementById('pickRestaurant').addEventListener('click', function() {
+  async function fetchRestaurants(lat, lon) {
+    const query = `[out:json][timeout:25];
+      node["amenity"="restaurant"](around:1000,${lat},${lon});
+      out;`;
+    const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.elements && data.elements.length > 0) {
+        return data.elements.map(el => ({
+          name: el.tags.name || "Unnamed Restaurant",
+          lat: el.lat,
+          lon: el.lon
+        }));
+      } else {
+        return [];
+      }
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }
+
+  document.getElementById('pickRestaurant').addEventListener('click', async function() {
     if (!selectedLocation) {
       alert("Please select a location first!");
       return;
     }
 
-    const restaurants = [
-      "Nasi Lemak Royale",
-      "Hainan Chicken Rice House",
-      "Char Kway Teow Corner",
-      "Bak Kut Teh Delight",
-      "Roti Canai Express"
-    ];
+    const restaurants = await fetchRestaurants(selectedLocation.lat, selectedLocation.lng);
+
+    if (restaurants.length === 0) {
+      alert("No restaurants found nearby.");
+      return;
+    }
 
     const picked = restaurants[Math.floor(Math.random() * restaurants.length)];
 
-    // Create Google Maps link
-    const googleMapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked + " near Kuala Lumpur")}`;
+    // Google Maps link with restaurant name
+    const googleMapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.name + " near Kuala Lumpur")}`;
 
     L.popup()
-      .setLatLng(selectedLocation)
+      .setLatLng([picked.lat, picked.lon])
       .setContent(`<span style="font-size:20px; font-weight:bold;">Picked Restaurant:</span><br>
-                   <a class="restaurant-link" href="${googleMapLink}" target="_blank">${picked}</a>`)
+                   <a class="restaurant-link" href="${googleMapLink}" target="_blank">${picked.name}</a>`)
       .openOn(map);
   });
 </script>

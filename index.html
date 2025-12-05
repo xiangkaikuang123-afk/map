@@ -2,8 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Restaurant Roulette Dark Mode</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <style>
 :root {
   --primary: #00b14f;
@@ -14,30 +17,165 @@
   --text-secondary: #bbbbbb;
 }
 *{box-sizing:border-box;}
-body, html {margin:0; padding:0; font-family: 'Inter', Arial, sans-serif; background:var(--bg); color:var(--text); height:100%;}
+body, html {
+  margin:0;
+  padding:0;
+  font-family: 'Inter', Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100%;
+}
 
-#topBar {width:100%; padding:15px; background:var(--primary); color:white; font-size:22px; font-weight:600; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.3);}
+#topBar {
+  width:100%;
+  padding:15px;
+  background:var(--primary);
+  color:white;
+  font-size:22px;
+  font-weight:600;
+  text-align:center;
+  box-shadow:0 2px 10px rgba(0,0,0,0.3);
+}
 
-#searchSection {position: relative; max-width: 600px; margin: 15px auto;}
-#searchBox {width:100%; padding:12px 16px; font-size:18px; border:none; border-radius:25px; outline:none; background: var(--bg-panel); color:white; box-shadow:0 4px 12px rgba(0,0,0,0.3);}
-#suggestions {position: absolute; top:50px; width:100%; background: var(--bg-panel); border-radius:0 0 20px 20px; overflow:hidden; max-height:250px; overflow-y:auto; display:none; opacity:0; transition:opacity 0.3s ease; box-shadow:0 6px 18px rgba(0,0,0,0.5); z-index:1000;}
-.suggestItem {padding:12px 16px; cursor:pointer; border-bottom:1px solid #333; color: var(--text); transition: background 0.2s;}
+#searchSection {
+  position: relative;
+  max-width: 600px;
+  margin: 15px auto;
+}
+#searchBox {
+  width:100%;
+  padding:12px 16px;
+  font-size:18px;
+  border:none;
+  border-radius:25px;
+  outline:none;
+  background: var(--bg-panel);
+  color:white;
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+}
+#suggestions {
+  position: absolute;
+  top:50px;
+  width:100%;
+  background: var(--bg-panel);
+  border-radius:0 0 20px 20px;
+  overflow:hidden;
+  max-height:250px;
+  overflow-y:auto;
+  display:none;
+  opacity:0;
+  transition:opacity 0.3s ease;
+  box-shadow:0 6px 18px rgba(0,0,0,0.5);
+  z-index:1000;
+}
+.suggestItem {
+  padding:12px 16px;
+  cursor:pointer;
+  border-bottom:1px solid #333;
+  color: var(--text);
+  transition: background 0.2s;
+}
 .suggestItem:last-child {border-bottom:none;}
 .suggestItem:hover {background: rgba(0,177,79,0.2);}
 
 #map { height:60vh; width:100%; }
-#controls { text-align:center; padding:15px; }
-#pickRestaurant { background: var(--primary); color:white; border:none; padding:14px 25px; border-radius:25px; font-size:20px; cursor:pointer; transition:0.3s;}
+
+#controls {
+  text-align:center;
+  padding:15px;
+}
+#pickRestaurant {
+  background: var(--primary);
+  color:white;
+  border:none;
+  padding:14px 25px;
+  border-radius:25px;
+  font-size:20px;
+  cursor:pointer;
+  transition:0.3s;
+}
 #pickRestaurant:hover { background: var(--primary-dark); }
 
 .leaflet-popup-content { font-size:16px; color:var(--text); }
 .leaflet-popup-content a { color:#00b14f; text-decoration:none; }
 .leaflet-popup-content a:hover { text-decoration:underline; }
 
-.review { margin-top:5px; padding:5px; border-top:1px solid #333; font-size:14px; color: var(--text-secondary);}
-.rating { color:#ffb400; font-weight:bold;}
+.review {
+  margin-top:5px;
+  padding:5px;
+  border-top:1px solid #333;
+  font-size:14px;
+  color: var(--text-secondary);
+}
+.rating { color:#ffb400; font-weight:bold; }
+
+/* ========================= */
+/*      MOBILE OPTIMIZED     */
+/* ========================= */
+
+@media (max-width: 768px) {
+
+  #topBar {
+    font-size: 18px;
+    padding: 12px;
+  }
+
+  #searchSection {
+    margin: 10px auto;
+    max-width: 90%;
+  }
+
+  #searchBox {
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+
+  #suggestions {
+    max-height: 200px;
+  }
+
+  #map {
+    height: 55vh;
+  }
+
+  #controls {
+    padding: 10px;
+  }
+
+  #pickRestaurant {
+    font-size: 16px;
+    padding: 12px 20px;
+    border-radius: 20px;
+  }
+
+  .leaflet-popup-content {
+    font-size: 14px;
+  }
+
+  .leaflet-popup-content b {
+    font-size: 16px;
+  }
+}
+
+/* Very small devices */
+@media (max-width: 480px) {
+
+  #map {
+    height: 50vh;
+  }
+
+  #pickRestaurant {
+    font-size: 15px;
+    padding: 10px 18px;
+  }
+
+  #searchBox {
+    font-size: 15px;
+  }
+}
 </style>
 </head>
+
 <body>
 
 <div id="topBar">Restaurant Roulette</div>
@@ -55,6 +193,7 @@ body, html {margin:0; padding:0; font-family: 'Inter', Arial, sans-serif; backgr
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+
 let map = L.map('map').setView([3.1390,101.6869],14);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);
 
@@ -63,7 +202,7 @@ let userMarker = null;
 let restaurants = [];
 let currentMarker = null;
 
-// --- Auto-detect user location ---
+/* Auto detect user */
 if(navigator.geolocation){
   navigator.geolocation.getCurrentPosition(pos=>{
     selectedLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
@@ -76,10 +215,11 @@ if(navigator.geolocation){
   }, ()=>console.warn("Geolocation denied"));
 }
 
-// --- Click map sets location ---
+/* Click map to set location */
 map.on("click",e=>{
   selectedLocation = e.latlng;
-  restaurants=[]; 
+  restaurants=[];
+
   if(!userMarker){
     userMarker=L.marker(e.latlng,{draggable:true}).addTo(map);
     userMarker.on("dragend",evt=>{
@@ -87,22 +227,30 @@ map.on("click",e=>{
       restaurants=[]; if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
     });
   } else userMarker.setLatLng(e.latlng);
+
   if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
 });
 
-// --- Search suggestion ---
+/* Search autocomplete */
 const searchBox = document.getElementById("searchBox");
 const suggestionsBox = document.getElementById("suggestions");
 let suggestionTimeout;
+
 searchBox.addEventListener("input",()=>{
   const q=searchBox.value.trim();
   clearTimeout(suggestionTimeout);
-  if(q.length<2){ suggestionsBox.style.opacity=0; setTimeout(()=>{suggestionsBox.style.display="none"},300); return; }
-  
+
+  if(q.length<2){
+    suggestionsBox.style.opacity=0;
+    setTimeout(()=>{suggestionsBox.style.display="none"},300);
+    return;
+  }
+
   suggestionTimeout=setTimeout(async()=>{
     const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=MY&q=${encodeURIComponent(q)}`);
     const data=await res.json();
     suggestionsBox.innerHTML="";
+
     data.forEach(r=>{
       const item=document.createElement("div");
       item.className="suggestItem";
@@ -110,53 +258,69 @@ searchBox.addEventListener("input",()=>{
       item.onclick=()=>{
         selectedLocation={lat:r.lat,lng:r.lon};
         map.setView([r.lat,r.lon],16);
+
         if(!userMarker) userMarker=L.marker([r.lat,r.lon],{draggable:true}).addTo(map);
         else userMarker.setLatLng([r.lat,r.lon]);
-        restaurants=[]; if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
-        suggestionsBox.style.opacity=0; setTimeout(()=>{suggestionsBox.style.display="none"},300);
+
+        restaurants=[];
+        if(currentMarker){ map.removeLayer(currentMarker); currentMarker=null; }
+
+        suggestionsBox.style.opacity=0;
+        setTimeout(()=>{suggestionsBox.style.display="none"},300);
       };
       suggestionsBox.appendChild(item);
     });
+
     suggestionsBox.style.display="block";
     setTimeout(()=>{suggestionsBox.style.opacity=1},10);
   },300);
 });
 
-// --- Fetch nearby restaurants ---
+/* Fetch nearby restaurants */
 async function fetchNearby(lat,lon){
-  const query=`[out:json][timeout:25];node["amenity"="restaurant"](around:1200,${lat},${lon});out;`;
+  const query=`[out:json][timeout:25];
+               node["amenity"="restaurant"](around:1200,${lat},${lon});
+               out;`;
+
   const url="https://overpass-api.de/api/interpreter?data="+encodeURIComponent(query);
-  const resp=await fetch(url); const data=await resp.json();
-  return data.elements.map(el=>({name:el.tags.name||"Unnamed Restaurant",lat:el.lat,lon:el.lon}));
+  const resp=await fetch(url);
+  const data=await resp.json();
+
+  return data.elements.map(el=>({
+    name:el.tags.name || "Unnamed Restaurant",
+    lat:el.lat,
+    lon:el.lon
+  }));
 }
 
-// --- Dummy Reviews ---
+/* Fake reviews placeholder (replace anytime) */
 async function getReviews(name){
-  // simulate reviews, can connect to free API if desired
   return [
     {provider:'Yelp', reviewRating:4, reviewText:'Nice place!'},
     {provider:'Google', reviewRating:5, reviewText:'Excellent food.'}
   ];
 }
 
-// --- Pick Random Restaurant ---
+/* Pick random restaurant */
 async function pickRestaurant(){
   if(!selectedLocation) return alert("Location not set yet.");
+
   if(restaurants.length===0){
     restaurants=await fetchNearby(selectedLocation.lat,selectedLocation.lng);
     if(restaurants.length===0) return alert("No restaurants nearby.");
   }
 
-  const picked=restaurants[Math.floor(Math.random()*restaurants.length)];
+  const picked = restaurants[Math.floor(Math.random()*restaurants.length)];
 
   if(currentMarker) map.removeLayer(currentMarker);
   currentMarker = L.marker([picked.lat,picked.lon]).addTo(map);
 
-// Build popup content
-let popupHtml = `<b style="color:black;">${picked.name}</b><br>
-                 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.name)}" target="_blank">Open in Google Maps</a>`;
-
-
+  let popupHtml = `
+    <b style="color:black;">${picked.name}</b><br>
+    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(picked.name)}" target="_blank">
+      Open in Google Maps
+    </a>
+  `;
 
   const reviews = await getReviews(picked.name);
   if(reviews.length>0){
@@ -172,6 +336,7 @@ let popupHtml = `<b style="color:black;">${picked.name}</b><br>
 }
 
 document.getElementById("pickRestaurant").onclick=pickRestaurant;
+
 </script>
 </body>
 </html>
